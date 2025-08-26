@@ -1,0 +1,282 @@
+networks:
+  loki:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.0.0/16
+
+services:
+  distributor:
+    image: grafana/loki:3.5.2
+    container_name: loki-distributor
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./config/distributor.yaml:/etc/loki/distributor.yaml:ro
+    command: -config.file=/etc/loki/distributor.yaml -target=distributor
+    networks:
+      - loki
+    depends_on:
+      - ingester-1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  ingester-1:
+    image: grafana/loki:3.5.2
+    container_name: loki-ingester-1
+    ports:
+      - "3101:3101"
+    volumes:
+      - ./config/ingester.yaml:/etc/loki/ingester.yaml:ro
+      - /lokiextepaydrpreprod_export/data/index:/loki/index
+      - /lokiextepaydrpreprod_export/data/ingester-1/wal:/loki/wal
+      - /lokiextepaydrpreprod_export/data/chunks:/loki/chunks
+    command: -config.file=/etc/loki/ingester.yaml -target=ingester
+    security_opt:
+      - apparmor=unconfined
+    networks:
+      - loki
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3101/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+  ingester-2:
+    image: grafana/loki:3.5.2
+    container_name: loki-ingester-2
+    ports:
+      - "3106:3101"
+    volumes:
+      - ./config/ingester.yaml:/etc/loki/ingester.yaml:ro
+      - /lokiextepaydrpreprod_export/data/index:/loki/index
+      - /lokiextepaydrpreprod_export/data/ingester-2/wal:/loki/wal
+      - /lokiextepaydrpreprod_export/data/chunks:/loki/chunks
+    command: -config.file=/etc/loki/ingester.yaml -target=ingester
+    security_opt:
+      - apparmor=unconfined
+    networks:
+      - loki
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3101/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  ingester-3:
+    image: grafana/loki:3.5.2
+    container_name: loki-ingester-3
+    ports:
+      - "3107:3101"
+    volumes:
+      - ./config/ingester.yaml:/etc/loki/ingester.yaml:ro
+      - /lokiextepaydrpreprod_export/data/index:/loki/index
+      - /lokiextepaydrpreprod_export/data/ingester-3/wal:/loki/wal
+      - /lokiextepaydrpreprod_export/data/chunks:/loki/chunks
+    command: -config.file=/etc/loki/ingester.yaml -target=ingester
+    security_opt:
+      - apparmor=unconfined
+    networks:
+      - loki
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3101/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  querier:
+    image: grafana/loki:3.5.2
+    container_name: loki-querier
+    ports:
+      - "3102:3102"
+    volumes:
+      - ./config/querier.yaml:/etc/loki/querier.yaml:ro
+      - /lokiextepaydrpreprod_export/data/index:/loki/index
+      - /lokiextepaydrpreprod_export/data/chunks:/loki/chunks
+    command: -config.file=/etc/loki/querier.yaml -target=querier
+    networks:
+      - loki
+    depends_on:
+      - ingester-1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3102/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '2.0'
+        reservations:
+          memory: 1G
+          cpus: '1.0'
+
+  query-frontend:
+    image: grafana/loki:3.5.2
+    container_name: loki-query-frontend
+    ports:
+      - "3103:3103"
+    volumes:
+      - ./config/query-frontend.yaml:/etc/loki/query-frontend.yaml:ro
+    command: -config.file=/etc/loki/query-frontend.yaml -target=query-frontend
+    networks:
+      - loki
+    depends_on:
+      - querier
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3103/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  compactor:
+    image: grafana/loki:3.5.2
+    container_name: loki-compactor
+    ports:
+      - "3104:3104"
+    volumes:
+      - ./config/compactor.yaml:/etc/loki/compactor.yaml:ro
+      - /lokiextepaydrpreprod_export/data/index:/loki/index
+      - /lokiextepaydrpreprod_export/data/chunks:/loki/chunks
+      - /lokiextepaydrpreprod_export/data/compactor-cache:/loki/index-cache   # ok as local cache
+      - /lokiextepaydrpreprod_export/data/compactor-wd:/loki/data    # working dir (writable)
+    command: -config.file=/etc/loki/compactor.yaml -target=compactor
+    networks:
+      - loki
+    depends_on:
+      - ingester-1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3104/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '0.5'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+
+  index-gateway:
+    image: grafana/loki:3.5.2
+    container_name: loki-index-gateway
+    ports:
+      - "3105:3105"
+    volumes:
+      - ./config/index-gateway.yaml:/etc/loki/index-gateway.yaml:ro
+      - /lokiextepaydrpreprod_export/data/index:/loki/index
+    command: -config.file=/etc/loki/index-gateway.yaml -target=index-gateway
+    networks:
+      - loki
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3105/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: loki-grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - /lokiextepaydrpreprod_export/grafana:/var/lib/grafana
+      - /lokiextepaydrpreprod_export/grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/certs/grafana.crt:/certs/grafana.crt
+      - ./grafana/certs/grafana.key:/certs/grafana.key
+      - /lokiextepaydrpreprod_export/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:3000
+      - GF_LOG_LEVEL=info
+    networks:
+      - loki
+    depends_on:
+      - distributor
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "https://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
