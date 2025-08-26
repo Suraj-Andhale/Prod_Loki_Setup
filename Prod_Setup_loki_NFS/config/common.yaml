@@ -1,0 +1,32 @@
+auth_enabled: false
+server:
+  http_listen_port: 3100
+  grpc_listen_port: 9095
+ring:
+  kvstore:
+    store: memberlist
+limits_config:
+  replication_factor: 3
+  ingestion_rate_mb: 16
+  ingestion_burst_size_mb: 32
+  max_streams_per_user: 500000
+  retention_period: 8760h
+schema_config:
+  configs:
+  - from: 2020-10-15
+    store: tsdb
+    object_store: s3
+    schema: v12
+    index:
+      prefix: index_
+      period: 24h
+storage_config:
+  aws:
+    s3: s3://ISDFM17568E29GK2XFUB:mSXxF48x12V_p___45ne_TYqQaPeC3Nrg_a1_V_4@https://s3store-a9cl2-dr.bank.sbi/epay-dr-preprod-external-logging/epay-dr-preprod-external-logging
+    s3forcepathstyle: true
+    insecure: false
+    region: us-east-1
+  tsdb_shipper:
+    active_index_directory: /loki/index
+    cache_location: /loki/index-cache
+    shared_store: s3
